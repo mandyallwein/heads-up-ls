@@ -62,12 +62,12 @@ def index():
         resp = requests.get("https://www.lcwc911.us/live-incident-list", timeout=15, headers={"User-Agent": "Mozilla/5.0"})
         soup = BeautifulSoup(resp.text, 'lxml')
 
-        # Use Eastern Time
         last_refreshed = datetime.now(ZoneInfo("America/New_York")).strftime("%a, %b %d, %Y %H:%M")
 
         fire_incidents = []
         traffic_incidents = []
 
+        # Better parsing
         time_pattern = re.compile(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat),\s+\w+\s+\d+,\s+\d{4}\s+\d{1,2}:\d{2}$')
         time_elements = soup.find_all(string=time_pattern)
 
@@ -76,7 +76,7 @@ def index():
                 time_str = time_elem.strip()
                 sibling = time_elem.find_next_sibling()
                 lines = []
-                while sibling and len(lines) < 12:
+                while sibling and len(lines) < 15:
                     text = sibling.get_text(strip=True)
                     if text and not time_pattern.match(text):
                         lines.append(text)
@@ -112,7 +112,7 @@ def index():
         return render_template_string(HTML_TEMPLATE, last_refreshed=last_refreshed, fire_incidents=fire_incidents, traffic_incidents=traffic_incidents)
 
     except Exception as e:
-        return f"<h1>Error loading data</h1><p>{str(e)}</p><p>Please refresh the page.</p>", 500
+        return f"<h1>Error loading data</h1><p>{str(e)}</p><p>Please refresh the page in a minute.</p>", 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
