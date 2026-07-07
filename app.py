@@ -6,7 +6,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Exclusion list - Manheim Borough only (not Township)
+# Exclusion list - Manheim Borough excluded, Manheim Township allowed
 EXCLUDED = {"Adamstown", "Akron", "Columbia", "Denver", "East Petersburg", "Elizabethtown", "Ephrata", "Lititz", "Manheim", "Marietta", "Mount Joy", "Mountville", "Terre Hill", "Brecknock", "Caernarvon", "Clay", "Conoy", "Earl", "East Cocalico", "East Donegal", "East Earl", "East Hempfield", "Elizabeth", "Ephrata", "Mount Joy", "Penn", "Rapho", "Warwick", "West Cocalico", "West Donegal", "West Earl", "West Hempfield"}
 
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -67,15 +67,19 @@ def index():
         fire_incidents = []
         traffic_incidents = []
 
-        # Better parsing
         time_pattern = re.compile(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat),\s+\w+\s+\d+,\s+\d{4}\s+\d{1,2}:\d{2}$')
         time_elements = soup.find_all(string=time_pattern)
 
         for time_elem in time_elements:
             try:
                 time_str = time_elem.strip()
-                parent = time_elem.parent
-                lines = [line.strip() for line in parent.find_all(string=True, recursive=True) if line.strip() and not time_pattern.match(line.strip())]
+                sibling = time_elem.find_next_sibling()
+                lines = []
+                while sibling and len(lines) < 12:
+                    text = sibling.get_text(strip=True)
+                    if text and not time_pattern.match(text):
+                        lines.append(text)
+                    sibling = sibling.find_next_sibling()
 
                 if len(lines) < 3:
                     continue
