@@ -6,7 +6,14 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-EXCLUDED = {"Adamstown", "Akron", "Columbia", "Denver", "East Petersburg", "Elizabethtown", "Ephrata", "Lititz", "Manheim", "Marietta", "Mount Joy", "Mountville", "Terre Hill", "Brecknock", "Caernarvon", "Clay", "Conoy", "Earl", "East Cocalico", "East Donegal", "East Earl", "East Hempfield", "Elizabeth", "Ephrata", "Mount Joy", "Penn", "Rapho", "Warwick", "West Cocalico", "West Donegal", "West Earl", "West Hempfield"}
+# Precise exclusions - Manheim Borough excluded, but Manheim Township allowed
+EXCLUDED = {
+    "Adamstown", "Akron", "Columbia", "Denver", "East Petersburg", "Elizabethtown", 
+    "Ephrata", "Lititz", "Manheim", "Marietta", "Mount Joy", "Mountville", "Terre Hill",
+    "Brecknock", "Caernarvon", "Clay", "Conoy", "Earl", "East Cocalico", "East Donegal", 
+    "East Earl", "East Hempfield", "Elizabeth", "Ephrata", "Mount Joy", "Penn", "Rapho",
+    "Warwick", "West Cocalico", "West Donegal", "West Earl", "West Hempfield"
+}
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
@@ -22,7 +29,7 @@ h2 { font-size: 1.35rem; margin: 32px 0 12px 0; color: #ffffff; border-bottom: 2
 .time { color: #ffd700; font-weight: 600; font-size: 1.02rem; }
 .type, .location1, .location2, .unit { color: #ffffff; }
 .note { font-size: 0.85rem; color: #b0c4ff; text-align: center; margin-top: 40px; }
-a { color: #ffd700; }
+a { color: #ffd700; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -63,19 +70,22 @@ def index():
 
         last_refreshed = datetime.now().strftime("%a, %b %d, %Y %H:%M")
 
-        # Improved parsing
         fire_incidents = []
         traffic_incidents = []
 
-        # Find all time lines
         time_pattern = re.compile(r'^(Sun|Mon|Tue|Wed|Thu|Fri|Sat),\s+\w+\s+\d+,\s+\d{4}\s+\d{1,2}:\d{2}$')
         time_elements = soup.find_all(string=time_pattern)
 
         for time_elem in time_elements:
             try:
                 time_str = time_elem.strip()
-                parent = time_elem.find_parent()
-                lines = [line.strip() for line in parent.find_all(string=True) if line.strip() and not time_pattern.match(line.strip())]
+                sibling = time_elem.find_next_sibling()
+                lines = []
+                while sibling and len(lines) < 12:
+                    text = sibling.get_text(strip=True)
+                    if text and not time_pattern.match(text):
+                        lines.append(text)
+                    sibling = sibling.find_next_sibling()
 
                 if len(lines) < 3:
                     continue
@@ -83,9 +93,10 @@ def index():
                 inc_type = lines[0]
                 loc1 = lines[1]
                 loc2 = lines[2]
-                units = [u.strip() for u in lines[3:] if u.strip() and not re.search(r'PENDING|None', u, re.I)]
+                units = [u.strip() for u in lines[3:] if u.strip()]
 
-                if loc2 in EXCLUDED:
+                # Only exclude exact "Manheim" (Borough). Allow "Manheim Township"
+                if loc2.strip() in EXCLUDED or (loc2.strip() == "Manheim" and "Township" not in loc2):
                     continue
 
                 inc = {
@@ -96,7 +107,7 @@ def index():
                     'units': units
                 }
 
-                if "TRAFFIC" in inc_type.upper() or "ACCIDENT" in inc_type.upper() or "HAZARD" in inc_type.upper():
+                if any(word in inc_type.upper() for word in ["TRAFFIC", "ACCIDENT", "HAZARD", "DISABLED", "HIGH WATER"]):
                     traffic_incidents.append(inc)
                 else:
                     fire_incidents.append(inc)
