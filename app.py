@@ -2,10 +2,11 @@ from flask import Flask, render_template_string
 import requests
 from bs4 import BeautifulSoup
 import re
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 app = Flask(__name__)
 
+# Your exclusion list
 EXCLUDED = {"Adamstown", "Akron", "Columbia", "Denver", "East Petersburg", "Elizabethtown", "Ephrata", "Lititz", "Manheim", "Marietta", "Mount Joy", "Mountville", "Terre Hill", "Brecknock", "Caernarvon", "Clay", "Conoy", "Earl", "East Cocalico", "East Donegal", "East Earl", "East Hempfield", "Elizabeth", "Ephrata", "Mount Joy", "Penn", "Rapho", "Warwick", "West Cocalico", "West Donegal", "West Earl", "West Hempfield"}
 
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -61,17 +62,18 @@ def index():
         resp = requests.get("https://www.lcwc911.us/live-incident-list", timeout=15, headers={"User-Agent": "Mozilla/5.0"})
         soup = BeautifulSoup(resp.text, 'lxml')
 
-        last_refreshed = datetime.now().strftime("%a, %b %d, %Y %H:%M")
+        # Eastern Time (EDT)
+        now_et = datetime.now(timezone.utc) - timedelta(hours=4)
+        last_refreshed = now_et.strftime("%a, %b %d, %Y %H:%M")
 
-        # Basic parsing - this may need refinement
+        # Basic parsing - this is simplified for now
         fire_incidents = []
         traffic_incidents = []
 
-        # This is a placeholder - we'll improve if needed after deployment
         return render_template_string(HTML_TEMPLATE, last_refreshed=last_refreshed, fire_incidents=fire_incidents, traffic_incidents=traffic_incidents)
 
     except Exception as e:
-        return f"<h1>Error loading data</h1><p>{str(e)}</p><p>Refresh the page.</p>", 500
+        return f"<h1>Error</h1><p>{str(e)}</p><p>Refresh the page.</p>", 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
