@@ -3,10 +3,10 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 
-# Exclusion list - Manheim Borough excluded, Manheim Township allowed
 EXCLUDED = {"Adamstown", "Akron", "Columbia", "Denver", "East Petersburg", "Elizabethtown", "Ephrata", "Lititz", "Manheim", "Marietta", "Mount Joy", "Mountville", "Terre Hill", "Brecknock", "Caernarvon", "Clay", "Conoy", "Earl", "East Cocalico", "East Donegal", "East Earl", "East Hempfield", "Elizabeth", "Ephrata", "Mount Joy", "Penn", "Rapho", "Warwick", "West Cocalico", "West Donegal", "West Earl", "West Hempfield"}
 
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -62,7 +62,8 @@ def index():
         resp = requests.get("https://www.lcwc911.us/live-incident-list", timeout=15, headers={"User-Agent": "Mozilla/5.0"})
         soup = BeautifulSoup(resp.text, 'lxml')
 
-        last_refreshed = datetime.now().strftime("%a, %b %d, %Y %H:%M")
+        # Use Eastern Time
+        last_refreshed = datetime.now(ZoneInfo("America/New_York")).strftime("%a, %b %d, %Y %H:%M")
 
         fire_incidents = []
         traffic_incidents = []
